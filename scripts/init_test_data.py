@@ -20,11 +20,11 @@ async def init_database():
 
     print("Connecting to PostgreSQL...")
     conn = await asyncpg.connect(
-    user='liteads',
-    password='liteads_password',
-    database='liteads',
-    host='postgres',
-    port=5432
+        user='liteads',
+        password='liteads_password',
+        database='liteads',
+        host='postgres',
+        port=5432
     )
     print("Creating tables...")
 
