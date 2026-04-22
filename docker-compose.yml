@@ -12,6 +12,8 @@ services:
       - LITEADS_DATABASE__PASSWORD=liteads_password
       - LITEADS_REDIS__HOST=redis
       - LITEADS_REDIS__PORT=6379
+      - REDIS_URL=redis://redis:6379/0  # <--- AÑADE ESTA LÍNEA
+      - LITEADS_REDIS_URL=redis://redis:6379/0 # <--- AÑADE ESTA TAMBIÉN POR SI ACASO
     depends_on:
       postgres:
         condition: service_healthy
