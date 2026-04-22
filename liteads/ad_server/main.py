@@ -67,6 +67,7 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.debug else None,
         redoc_url="/redoc" if settings.debug else None,
         lifespan=lifespan,
+        root_path="/anunciosNES"  # <--- AGREGA ESTA LÍNEA
     )
 
     # CORS middleware
