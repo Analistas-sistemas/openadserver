@@ -3,8 +3,15 @@ services:
     build:
       context: .
       dockerfile: deployment/docker/Dockerfile
-    env_file:
-      - .env  # Importante para que Dokploy inyecte los secretos
+    environment:
+      - LITEADS_ENV=prod
+      - LITEADS_DATABASE__HOST=postgres
+      - LITEADS_DATABASE__PORT=5432
+      - LITEADS_DATABASE__NAME=liteads
+      - LITEADS_DATABASE__USER=liteads
+      - LITEADS_DATABASE__PASSWORD=liteads_password
+      - LITEADS_REDIS__HOST=redis
+      - LITEADS_REDIS__PORT=6379
     depends_on:
       postgres:
         condition: service_healthy
