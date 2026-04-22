@@ -51,7 +51,7 @@ class EventService:
                 return False
 
             # Create event record
-            event = AdEvent(
+            event = Event(
                 request_id=request_id,
                 campaign_id=campaign_id,
                 creative_id=creative_id,
