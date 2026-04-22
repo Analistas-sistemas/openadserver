@@ -264,7 +264,7 @@ async def verify_data():
     import asyncpg
 
     conn = await asyncpg.connect(
-        host="localhost",
+        host="postgres",
         port=5432,
         user="liteads",
         password="liteads_password",
