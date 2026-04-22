@@ -13,8 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from liteads.common.cache import CacheKeys, redis_client
 from liteads.common.logger import get_logger
 from liteads.common.utils import current_date, current_hour
-from liteads.models import AdEvent, EventType
-
+from liteads.models import Event, EventType
 logger = get_logger(__name__)
 
 
