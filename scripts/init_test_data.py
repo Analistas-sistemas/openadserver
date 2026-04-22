@@ -82,6 +82,7 @@ async def init_database():
             width SMALLINT,
             height SMALLINT,
             status SMALLINT DEFAULT 1 NOT NULL,
+            quality_score FLOAT DEFAULT 1.0 NOT NULL,
             impressions BIGINT DEFAULT 0 NOT NULL,
             clicks BIGINT DEFAULT 0 NOT NULL,
             conversions BIGINT DEFAULT 0 NOT NULL,
