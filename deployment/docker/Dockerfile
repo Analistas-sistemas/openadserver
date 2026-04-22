@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy source code for building wheel
+# ... líneas anteriores del Dockerfile ...
 COPY pyproject.toml ./
+COPY README.md ./   
 COPY liteads ./liteads
-
+# ... resto del archivo ...
 # Build wheel
 RUN pip install --no-cache-dir build hatchling && \
     pip wheel --no-cache-dir --wheel-dir=/app/wheels .
