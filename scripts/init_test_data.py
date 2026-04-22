@@ -39,6 +39,9 @@ async def init_database():
             balance DECIMAL(15,2) DEFAULT 0.00 NOT NULL,
             credit_limit DECIMAL(15,2) DEFAULT 0.00 NOT NULL,
             status SMALLINT DEFAULT 1 NOT NULL,
+            clicks BIGINT DEFAULT 0 NOT NULL,
+            impressions BIGINT DEFAULT 0 NOT NULL,
+            conversions BIGINT DEFAULT 0 NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
         )
