@@ -64,10 +64,11 @@ def create_app() -> FastAPI:
         title="LiteAds",
         description="A lightweight computational advertising system",
         version=settings.app_version,
-        docs_url="/docs" if settings.debug else None,
-        redoc_url="/redoc" if settings.debug else None,
+        # Forzamos a que los docs siempre existan, sin importar el debug
+        docs_url="/docs", 
+        redoc_url="/redoc",
         lifespan=lifespan,
-        root_path="/anunciosNES"  # <--- AGREGA ESTA LÍNEA
+        root_path="/anunciosNES"
     )
 
     # CORS middleware
