@@ -113,7 +113,7 @@ class TargetingRetrieval(BaseRetrieval):
         campaign_list: list[dict[str, Any]] = []
 
         for campaign in campaigns:
-            if not campaign.is_active:
+            if campaign.status != 1
                 continue
 
             campaign_data: dict[str, Any] = {
