@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: deployment/docker/Dockerfile
     env_file:
-      - .env  # Importante para el Paso 4 (Dokploy inyectará los secretos)
+      - .env  # Importante para que Dokploy inyecte los secretos
     depends_on:
       postgres:
         condition: service_healthy
@@ -18,16 +18,7 @@ services:
     restart: unless-stopped
     networks:
       - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      # Enrutamiento: Solo atiende a este dominio Y a rutas que empiecen con /anunciosNES
-      - "traefik.http.routers.nes-adserver.rule=Host(`desarrollo.nettalco.com.pe`) && PathPrefix(`/anunciosNES`)"
-      - "traefik.http.routers.nes-adserver.entrypoints=websecure"
-      - "traefik.http.routers.nes-adserver.tls.certResolver=letsencrypt"
-      - "traefik.http.services.nes-adserver.loadbalancer.server.port=8000"
-      # StripPrefix: Elimina "/anunciosNES" de la URL antes de entregarla a la app de Python (evita errores 404)
-      - "traefik.http.middlewares.nes-adserver-strip.stripprefix.prefixes=/anunciosNES"
-      - "traefik.http.routers.nes-adserver.middlewares=nes-adserver-strip"
+    # SE ELIMINARON LOS LABELS DE TRAEFIK. EL ENRUTAMIENTO SE HARÁ POR LA INTERFAZ.
 
   postgres:
     image: postgres:15-alpine
