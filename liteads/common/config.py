@@ -16,7 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class DatabaseSettings(BaseSettings):
     """Database configuration."""
 
-    host: str = "localhost"
+    host: str = "postgres"
     port: int = 5432
     name: str = "liteads"
     user: str = "liteads"
@@ -38,7 +38,7 @@ class DatabaseSettings(BaseSettings):
 class RedisSettings(BaseSettings):
     """Redis configuration."""
 
-    host: str = "localhost"
+    host: str = "redis"
     port: int = 6379
     db: int = 0
     password: str = ""
