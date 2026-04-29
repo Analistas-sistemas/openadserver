@@ -11,34 +11,20 @@ Esta versión incluye:
 
 ---
 
-## 🔄 Opciones de Despliegue
+## � Guía de Despliegue (Fresh Install)
 
-### Opción 1: FRESH INSTALL (Recomendado para desarrollo)
-**Empieza desde cero con base de datos limpia**
+**Esta guía realiza un despliegue limpio con base de datos nueva.**
 
-**Ventajas:**
-- ✅ Base de datos limpia con todas las nuevas tablas
-- ✅ Sin conflictos de migración
-- ✅ Más rápido y simple
+⚠️ **IMPORTANTE:** Se perderán los datos existentes. Si necesitas conservar datos, haz backup primero.
 
-**Desventajas:**
-- ❌ **Se pierden todos los datos existentes**
-- ❌ Hay que recrear campañas y anunciantes
-
-### Opción 2: MIGRACIÓN (Recomendado para producción)
-**Actualiza base de datos existente sin perder datos**
-
-**Ventajas:**
-- ✅ Conserva campañas, anunciantes y estadísticas existentes
-- ✅ Sin downtime de datos
-
-**Desventajas:**
-- ⚠️ Requiere ejecutar script de migración manualmente
-- ⚠️ Más pasos
+### ✅ Ventajas:
+- Base de datos limpia con todas las nuevas tablas
+- Sin conflictos de migración
+- Más rápido y simple
 
 ---
 
-## 🆕 OPCIÓN 1: Fresh Install (Base de Datos Nueva)
+## 📋 Pasos de Despliegue
 
 ### Paso 1: Preparar Dokploy
 
@@ -78,123 +64,94 @@ git push origin main
 
 ### Paso 4: Verificar Despliegue
 
-```bash
-# Conectarse al contenedor de PostgreSQL
-docker exec -it CONTAINER_NAME psql -U liteads -d liteads
+**Ejecutar desde DENTRO del contenedor de PostgreSQL:**
 
-# Verificar que existe la nueva tabla
+```bash
+# 1. Entrar al contenedor postgres
+docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
+
+# 2. Conectarse a la base de datos
+psql -U liteads -d liteads
+
+# 3. Verificar tabla app_clients (dentro de psql)
 SELECT COUNT(*) FROM app_clients;
 
-# Verificar índices nuevos
+# 4. Verificar índices nuevos
 SELECT indexname FROM pg_indexes 
 WHERE schemaname = 'public' 
   AND indexname LIKE 'idx_targeting%';
 
-# Salir
+# 5. Ver estructura completa de app_clients
+\d app_clients
+
+# 6. Ver todas las tablas
+\dt
+
+# 7. Salir de psql
 \q
+
+# 8. Salir del contenedor
+exit
 ```
 
-### Paso 5: Ejecutar Script de Setup (Datos de Prueba)
+**Respuestas esperadas:**
+- Paso 3: `count: 0` (tabla vacía pero existe)
+- Paso 4: Lista de 4+ índices (idx_targeting_rules_app_id, idx_targeting_rules_slot, etc.)
+- Paso 5: Descripción de la tabla con todas las columnas
+- Paso 6: Lista completa de tablas (advertisers, campaigns, creatives, app_clients, etc.)
+
+### Paso 5: Crear Cliente API (NECESARIO)
+
+**Desde DENTRO del contenedor de PostgreSQL:**
 
 ```bash
-# Copiar script al contenedor
-docker cp docs/assets/SQL_SETUP_NETTALCO.sql POSTGRES_CONTAINER:/tmp/
+# 1. Si no estás dentro del contenedor, entra primero
+docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
 
-# Ejecutar
-docker exec -it POSTGRES_CONTAINER psql -U liteads -d liteads -f /tmp/SQL_SETUP_NETTALCO.sql
+# 2. Conectarse a la base de datos
+psql -U liteads -d liteads
 
-# Ver API Key generada
-docker exec -it POSTGRES_CONTAINER psql -U liteads -d liteads -c "SELECT app_id, api_key, name FROM app_clients;"
+# 3. Crear cliente Nettalco (dentro de psql)
+INSERT INTO app_clients (app_id, api_key, name, company, status)
+VALUES (
+  'com.nettalco.publicidad',
+  'nettalco_' || md5(random()::text),
+  'Sistema Nettalco',
+  'Nettalco',
+  1
+) RETURNING app_id, api_key, name;
+
+# 4. Ver el cliente creado
+SELECT app_id, api_key, name FROM app_clients;
+
+# 5. Salir
+\q
+exit
 ```
 
-**⚠️ IMPORTANTE: Guardar la API Key que se muestra**
+**⚠️ IMPORTANTE: Copiar y guardar la API Key que aparece**
 
----
-
-## 🔄 OPCIÓN 2: Migración (Conservar Datos Existentes)
-
-### Paso 1: Backup de Seguridad
+**Alternativa: Ejecutar script completo de setup (opcional, para datos de prueba)**
 
 ```bash
-# Conectar al servidor Dokploy
-ssh usuario@tu-servidor-dokploy
+# Dentro del contenedor bash
+cd /tmp
+# Si tienes el script en el host, primero cópialo:
+# Desde el HOST: docker cp docs/assets/SQL_SETUP_NETTALCO.sql $(docker ps | grep postgres | awk '{print $1}'):/tmp/
 
-# Crear backup
-docker exec POSTGRES_CONTAINER pg_dump -U liteads liteads > backup_pre_migracion_$(date +%Y%m%d_%H%M%S).sql
-
-# Verificar backup
-ls -lh backup_pre_migracion_*.sql
-```
-
-### Paso 2: Push de cambios a Git
-
-```bash
-git add .
-git commit -m "feat: integración Nettalco v1.0.0 - migración"
-git push origin main
-```
-
-### Paso 3: Ejecutar Script de Migración
-
-```bash
-# En el servidor Dokploy
-
-# Copiar script de migración al contenedor
-docker cp scripts/migration_nettalco_v1.sql POSTGRES_CONTAINER:/tmp/
-
-# Ejecutar migración
-docker exec -it POSTGRES_CONTAINER psql -U liteads -d liteads -f /tmp/migration_nettalco_v1.sql
-```
-
-**Salida esperada:**
-```
-============================================================
-Migración completada exitosamente!
-============================================================
-App Clients creados: 1
-Índices de targeting creados: 4
-
-⚠️  IMPORTANTE: Guardar esta API Key:
-API Key Nettalco: nettalco_dev_XXXXXXXXXXXX
-```
-
-### Paso 4: Reiniciar Servicios en Dokploy
-
-1. **Dokploy → Tu proyecto → Actions**
-2. **Click en "Restart"**
-3. **Esperar 30-60 segundos**
-
-### Paso 5: Verificar Migración
-
-```bash
-# Verificar tabla app_clients
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "SELECT * FROM app_clients;"
-
-# Verificar nuevos índices
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  SELECT indexname, tablename 
-  FROM pg_indexes 
-  WHERE schemaname = 'public' 
-    AND indexname LIKE 'idx_targeting_rules_%';
-"
-
-# Verificar función helper
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  SELECT proname, prosrc 
-  FROM pg_proc 
-  WHERE proname = 'validate_api_key';
-"
+# Ejecutar script
+psql -U liteads -d liteads -f /tmp/SQL_SETUP_NETTALCO.sql
 ```
 
 ---
 
-## ✅ Verificación Post-Despliegue (Ambas Opciones)
+## ✅ Verificación Post-Despliegue
 
 ### 1. Health Check
 
 ```bash
 # Desde tu máquina local
-curl https://tu-dominio.com/anunciosNES/health
+curl https://desarrollo.nettalco.com.pe/anunciosNES/health
 
 # Respuesta esperada:
 {
@@ -207,12 +164,16 @@ curl https://tu-dominio.com/anunciosNES/health
 ### 2. Test de Endpoint de Anuncios (Sin Auth)
 
 ```bash
-curl -X POST https://tu-dominio.com/anunciosNES/api/v1/ad/request \
+curl -X POST https://desarrollo.nettalco.com.pe/anunciosNES/api/v1/ad/request \
   -H "Content-Type: application/json" \
   -d '{
     "slot_id": "test_slot",
     "user_id": "test_user",
-    "num_ads": 1
+    "num_ads": 1,
+    "device": {
+      "os": "web",
+      "language": "es"
+    }
   }'
 ```
 
@@ -220,40 +181,115 @@ curl -X POST https://tu-dominio.com/anunciosNES/api/v1/ad/request \
 
 ```bash
 # Reemplazar TU_API_KEY con la key obtenida
-curl -X POST https://tu-dominio.com/anunciosNES/api/v1/ad/request \
+curl -X POST https://desarrollo.nettalco.com.pe/anunciosNES/api/v1/ad/request \
   -H "Content-Type: application/json" \
   -H "X-API-Key: TU_API_KEY" \
   -d '{
     "slot_id": "dashboard_banner_principal",
     "user_id": "000016570",
     "num_ads": 1,
+    "device": {
+      "os": "web",
+      "language": "es"
+    },
+    "geo": {
+      "country": "PE",
+      "city": "Lima"
+    },
     "context": {
       "app_id": "com.nettalco.publicidad",
       "app_name": "Sistema Publicidad Nettalco"
+    },
+    "user_features": {
+      "custom": {
+        "tcodipers": "000016570",
+        "cargo": "ANALISTA DE SISTEMAS",
+        "unidad_funcional": "SISTEMAS",
+        "roles": ["COTIZACIONES_SUPERUSUARIO"],
+        "nivel_mas_alto": 150,
+        "es_admin": true
+      }
     }
   }'
 ```
 
-### 4. Test de Nuevo Targeting
+**Respuesta esperada exitosa:**
+```json
+{
+  "ads": [
+    {
+      "ad_id": "...",
+      "creative": {
+        "title": "...",
+        "description": "...",
+        "image_url": "...",
+        "landing_url": "..."
+      },
+      "tracking": {
+        "impression_url": "...",
+        "click_url": "..."
+      }
+    }
+  ],
+  "request_id": "..."
+}
+```
+
+### 4. Test de Nuevo Targeting (Crear Campaña de Prueba)
+
+**Desde DENTRO del contenedor de PostgreSQL:**
 
 ```bash
-# Crear campaña de prueba con nuevo targeting
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  -- Insertar anunciante si no existe
-  INSERT INTO advertisers (name, company, balance, status) 
-  SELECT 'Test Advertiser', 'Test Co', 10000.00, 1
-  WHERE NOT EXISTS (SELECT 1 FROM advertisers WHERE company = 'Test Co')
-  RETURNING id;
-  
-  -- Crear campaña (reemplazar ADVERTISER_ID con el ID obtenido)
-  INSERT INTO campaigns (advertiser_id, name, budget_daily, bid_amount, status)
-  VALUES (1, 'Test Campaign Nettalco', 100.00, 5.00, 1)
-  RETURNING id;
-  
-  -- Agregar targeting por app_id (reemplazar CAMPAIGN_ID)
-  INSERT INTO targeting_rules (campaign_id, rule_type, rule_value, is_include)
-  VALUES (1, 'app_id', '{\"values\": [\"com.nettalco.publicidad\"]}', true);
-"
+# 1. Entrar al contenedor
+docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
+
+# 2. Conectarse a la base de datos
+psql -U liteads -d liteads
+
+# 3. Ejecutar los siguientes comandos SQL uno por uno:
+```
+
+**Comandos SQL (copiar y pegar en psql):**
+
+```sql
+-- Insertar anunciante
+INSERT INTO advertisers (name, company, balance, status) 
+VALUES ('Test Advertiser', 'Test Co', 10000.00, 1)
+ON CONFLICT DO NOTHING
+RETURNING id;
+
+-- Crear campaña (usa el ID del anunciante anterior, o usa 1)
+INSERT INTO campaigns (advertiser_id, name, budget_daily, bid_amount, status)
+VALUES (1, 'Test Campaign Nettalco', 100.00, 5.00, 1)
+RETURNING id;
+
+-- Crear creativo (usa el ID de la campaña anterior, o usa 1)
+INSERT INTO creatives (campaign_id, title, description, image_url, landing_url, status)
+VALUES (1, 'Test Ad', 'Demo Advertisement', 'https://via.placeholder.com/300x250', 'https://nettalco.com', 1)
+RETURNING id;
+
+-- Agregar targeting por app_id
+INSERT INTO targeting_rules (campaign_id, rule_type, rule_value, is_include)
+VALUES (1, 'app_id', '{"values": ["com.nettalco.publicidad"]}', true)
+RETURNING id;
+
+-- Verificar todo
+SELECT 
+  c.id as campaign_id,
+  c.name as campaign_name,
+  COUNT(DISTINCT cr.id) as creatives,
+  COUNT(DISTINCT tr.id) as targeting_rules
+FROM campaigns c 
+LEFT JOIN creatives cr ON cr.campaign_id = c.id
+LEFT JOIN targeting_rules tr ON tr.campaign_id = c.id 
+WHERE c.id = 1 
+GROUP BY c.id, c.name;
+```
+
+**Salir:**
+```bash
+\q
+exit
 ```
 
 ### 5. Verificar Logs
@@ -272,40 +308,58 @@ docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
 
 ### Métricas a Vigilar (Primeras 24 horas)
 
+**Desde DENTRO del contenedor de PostgreSQL:**
+
 ```bash
-# Estadísticas de uso
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  SELECT 
-    app_id,
-    name as sistema,
-    COUNT(*) as requests
-  FROM app_clients ac
-  LEFT JOIN ad_events ae ON ae.user_id LIKE ac.app_id || '%'
-  GROUP BY app_id, name;
-"
+# 1. Entrar al contenedor
+docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
 
-# Campañas activas
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  SELECT 
-    c.name,
-    COUNT(DISTINCT cr.id) as creatives,
-    COUNT(DISTINCT tr.id) as targeting_rules
-  FROM campaigns c
-  LEFT JOIN creatives cr ON cr.campaign_id = c.id AND cr.status = 1
-  LEFT JOIN targeting_rules tr ON tr.campaign_id = c.id
-  WHERE c.status = 1
-  GROUP BY c.id, c.name;
-"
+# 2. Conectarse a la base de datos
+psql -U liteads -d liteads
+```
 
-# Tipos de targeting usados
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  SELECT 
-    rule_type,
-    COUNT(*) as count
-  FROM targeting_rules
-  GROUP BY rule_type
-  ORDER BY count DESC;
-"
+**Consultas SQL (copiar en psql):**
+
+```sql
+-- 1. Campañas activas
+SELECT 
+  c.id,
+  c.name,
+  c.status,
+  COUNT(DISTINCT cr.id) as creatives,
+  COUNT(DISTINCT tr.id) as targeting_rules
+FROM campaigns c
+LEFT JOIN creatives cr ON cr.campaign_id = c.id AND cr.status = 1
+LEFT JOIN targeting_rules tr ON tr.campaign_id = c.id
+WHERE c.status = 1
+GROUP BY c.id, c.name, c.status;
+
+-- 2. Tipos de targeting usados
+SELECT 
+  rule_type,
+  COUNT(*) as count
+FROM targeting_rules
+GROUP BY rule_type
+ORDER BY count DESC;
+
+-- 3. Clientes configurados
+SELECT app_id, name, status 
+FROM app_clients;
+
+-- 4. Estadísticas de eventos (si hay tráfico)
+SELECT 
+  event_type,
+  COUNT(*) as count,
+  DATE(event_time) as day
+FROM ad_events
+GROUP BY event_type, DATE(event_time)
+ORDER BY day DESC, event_type;
+```
+
+**Salir:**
+```bash
+\q
+exit
 ```
 
 ---
@@ -314,11 +368,37 @@ docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
 
 ### Error: "relation app_clients does not exist"
 
-**Causa:** Migración no se ejecutó o falló
+**Causa:** La tabla no se creó al inicializar la base de datos
 
 **Solución:**
 ```bash
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -f /tmp/migration_nettalco_v1.sql
+# Entrar al contenedor
+docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
+
+# Conectarse a la BD
+psql -U liteads -d liteads
+
+# Verificar tablas existentes
+\dt
+
+# Si app_clients no existe, crearla manualmente:
+CREATE TABLE app_clients (
+    id BIGSERIAL PRIMARY KEY,
+    app_id VARCHAR(255) UNIQUE NOT NULL,
+    api_key VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    company VARCHAR(255),
+    allowed_slots JSONB DEFAULT '[]'::jsonb,
+    allowed_ips JSONB DEFAULT '[]'::jsonb,
+    rate_limit_per_minute INTEGER DEFAULT 1000,
+    status SMALLINT DEFAULT 1 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+# Salir
+\q
+exit
 ```
 
 ### Error: "Invalid API key"
@@ -327,12 +407,18 @@ docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -f /tmp/migration_nett
 
 **Solución:**
 ```bash
-# Ver API keys válidas
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  SELECT app_id, api_key, status 
-  FROM app_clients 
-  WHERE status = 1;
-"
+# Entrar al contenedor
+docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
+psql -U liteads -d liteads
+
+# Ver API keys válidas (en psql)
+SELECT app_id, api_key, name, status 
+FROM app_clients 
+WHERE status = 1;
+
+# Salir
+\q
+exit
 ```
 
 ### Error: "No ads returned"
@@ -341,16 +427,29 @@ docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
 
 **Solución:**
 ```bash
-# Verificar campañas activas
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  SELECT c.id, c.name, c.status, COUNT(cr.id) as creatives
-  FROM campaigns c
-  LEFT JOIN creatives cr ON cr.campaign_id = c.id AND cr.status = 1
-  WHERE c.status = 1
-  GROUP BY c.id;
-"
+# Entrar al contenedor
+docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
+psql -U liteads -d liteads
 
-# Ejecutar SQL_SETUP_NETTALCO.sql para crear datos de prueba
+# Verificar campañas activas (en psql)
+SELECT 
+  c.id, 
+  c.name, 
+  c.status, 
+  COUNT(cr.id) as creatives,
+  COUNT(tr.id) as targeting_rules
+FROM campaigns c
+LEFT JOIN creatives cr ON cr.campaign_id = c.id AND cr.status = 1
+LEFT JOIN targeting_rules tr ON tr.campaign_id = c.id
+WHERE c.status = 1
+GROUP BY c.id, c.name, c.status;
+
+# Si no hay campañas, crear una básica:
+-- Ver paso "4. Test de Nuevo Targeting" arriba
+
+# Salir
+\q
+exit
 ```
 
 ### Contenedor no inicia
@@ -372,17 +471,24 @@ docker logs CONTAINER_NAME --tail 100
 ### 1. Cambiar API Keys de Producción
 
 ```bash
-docker exec POSTGRES_CONTAINER psql -U liteads -d liteads -c "
-  UPDATE app_clients 
-  SET api_key = 'nettalco_prod_' || md5(random()::text || NOW()::text)
-  WHERE app_id = 'com.nettalco.publicidad';
-  
-  -- Mostrar nueva key
-  SELECT app_id, api_key FROM app_clients;
-"
+# Entrar al contenedor
+docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
+psql -U liteads -d liteads
+
+# Actualizar API key (en psql)
+UPDATE app_clients 
+SET api_key = 'nettalco_prod_' || md5(random()::text || NOW()::text)
+WHERE app_id = 'com.nettalco.publicidad';
+
+-- Mostrar nueva key
+SELECT app_id, api_key, name FROM app_clients;
+
+# Salir
+\q
+exit
 ```
 
-**⚠️ GUARDAR LA NUEVA API KEY**
+**⚠️ COPIAR Y GUARDAR LA NUEVA API KEY**
 
 ### 2. Configurar CORS Específico (Producción)
 
@@ -440,9 +546,36 @@ if not x_api_key:
 ## 📞 Soporte
 
 **Errores críticos:**
-1. Revisar logs: `docker logs CONTAINER_NAME`
-2. Verificar base de datos: `docker exec -it POSTGRES_CONTAINER psql -U liteads`
-3. Rollback si es necesario: restaurar backup
+
+1. **Revisar logs del contenedor:**
+   ```bash
+   docker logs $(docker ps | grep ad-server | awk '{print $1}') --tail 100
+   ```
+
+2. **Verificar base de datos:**
+   ```bash
+   # Entrar al contenedor postgres
+   docker exec -it $(docker ps | grep postgres | awk '{print $1}') bash
+   
+   # Conectarse
+   psql -U liteads -d liteads
+   
+   # Ver todas las tablas
+   \dt
+   
+   # Ver datos de una tabla
+   SELECT * FROM app_clients LIMIT 5;
+   
+   # Salir
+   \q
+   exit
+   ```
+
+3. **Verificar conectividad:**
+   ```bash
+   # Desde tu máquina local
+   curl https://desarrollo.nettalco.com.pe/anunciosNES/health
+   ```
 
 **Documentación:**
 - [IMPLEMENTACION_COMPLETADA.md](./IMPLEMENTACION_COMPLETADA.md)

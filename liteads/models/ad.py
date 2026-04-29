@@ -104,11 +104,6 @@ class Campaign(Base, TimestampMixin):
     # Status
     status: Mapped[int] = mapped_column(Integer, default=Status.ACTIVE)
 
-    # Stats (cached)
-    impressions: Mapped[int] = mapped_column(Integer, default=0)
-    clicks: Mapped[int] = mapped_column(Integer, default=0)
-    conversions: Mapped[int] = mapped_column(Integer, default=0)
-
     # Relationships
     advertiser: Mapped["Advertiser"] = relationship(
         "Advertiser", back_populates="campaigns"
