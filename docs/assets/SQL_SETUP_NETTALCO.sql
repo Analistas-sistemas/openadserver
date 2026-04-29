@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS app_clients (
 );
 
 CREATE INDEX IF NOT EXISTS idx_app_clients_app_id ON app_clients(app_id);
-CREATE INDEX IF NOT EXISTS idx_app_clients_api_key ON app_clients(app_id);
+CREATE INDEX IF NOT EXISTS idx_app_clients_api_key ON app_clients(api_key);
 CREATE INDEX IF NOT EXISTS idx_app_clients_status ON app_clients(status);
 
 -- 2. Insertar cliente Nettalco

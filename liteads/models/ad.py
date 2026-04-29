@@ -139,9 +139,6 @@ class Creative(Base, TimestampMixin):
     # Status
     status: Mapped[int] = mapped_column(Integer, default=Status.ACTIVE)
 
-    # Quality score (0-100)
-    quality_score: Mapped[int] = mapped_column(Integer, default=80)
-
     # Relationships
     campaign: Mapped["Campaign"] = relationship("Campaign", back_populates="creatives")
 
