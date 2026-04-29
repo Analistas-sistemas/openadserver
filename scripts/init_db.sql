@@ -4,6 +4,27 @@
 -- Create extensions
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
+-- ============================================================
+-- Table: app_clients (Gestión de sistemas/clientes permitidos)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS app_clients (
+    id BIGSERIAL PRIMARY KEY,
+    app_id VARCHAR(255) UNIQUE NOT NULL,
+    api_key VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    company VARCHAR(255),
+    allowed_slots JSONB DEFAULT '[]'::jsonb,
+    allowed_ips JSONB DEFAULT '[]'::jsonb,
+    rate_limit_per_minute INTEGER DEFAULT 1000,
+    status SMALLINT DEFAULT 1 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_clients_app_id ON app_clients(app_id);
+CREATE INDEX IF NOT EXISTS idx_app_clients_api_key ON app_clients(api_key);
+CREATE INDEX IF NOT EXISTS idx_app_clients_status ON app_clients(status);
+
 -- Create advertisers table
 CREATE TABLE IF NOT EXISTS advertisers (
     id BIGSERIAL PRIMARY KEY,
@@ -134,3 +155,22 @@ DO $$
 BEGIN
     RAISE NOTICE 'LiteAds database initialized successfully!';
 END $$;
+
+-- ============================================================
+-- Additional Indexes for Targeting Performance (Nettalco)
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_targeting_rules_app_id 
+ON targeting_rules ((rule_value->>'values')) 
+WHERE rule_type = 'app_id';
+
+CREATE INDEX IF NOT EXISTS idx_targeting_rules_slot 
+ON targeting_rules ((rule_value->>'values')) 
+WHERE rule_type = 'slot';
+
+CREATE INDEX IF NOT EXISTS idx_targeting_rules_user_role 
+ON targeting_rules ((rule_value->>'roles')) 
+WHERE rule_type = 'user_role';
+
+CREATE INDEX IF NOT EXISTS idx_targeting_rules_department 
+ON targeting_rules ((rule_value->>'departments')) 
+WHERE rule_type = 'department';

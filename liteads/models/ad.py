@@ -24,6 +24,34 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from liteads.models.base import Base, BidType, CreativeType, Status, TimestampMixin
 
 
+class AppClient(Base, TimestampMixin):
+    """
+    App clients / external systems allowed to use the ad server.
+    
+    Used for API key authentication and access control.
+    """
+
+    __tablename__ = "app_clients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    app_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    api_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    
+    # Allowed slots for this client (empty = all allowed)
+    allowed_slots: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    
+    # Allowed IPs (CIDR notation, empty = all allowed)
+    allowed_ips: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    
+    # Rate limiting
+    rate_limit_per_minute: Mapped[int] = mapped_column(Integer, default=1000)
+    
+    # Status
+    status: Mapped[int] = mapped_column(Integer, default=Status.ACTIVE)
+
+
 class Advertiser(Base, TimestampMixin):
     """Advertiser account."""
 

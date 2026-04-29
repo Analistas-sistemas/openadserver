@@ -71,13 +71,24 @@ def create_app() -> FastAPI:
         root_path="/anunciosNES"
     )
 
-    # CORS middleware
+    # CORS middleware - Configure specific origins in production
+    # TODO: Update allowed origins based on your deployment
+    allowed_origins = ["*"]  # Development: allow all
+    
+    # Production example (uncomment and configure):
+    # if settings.env == "production":
+    #     allowed_origins = [
+    #         "https://publicidad.nettalco.com",
+    #         "https://app.nettalco.com",
+    #     ]
+    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-API-Key", "Authorization"],
+        expose_headers=["X-Request-ID", "X-Response-Time"],
     )
 
     # Prometheus metrics middleware

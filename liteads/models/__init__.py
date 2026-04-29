@@ -4,6 +4,7 @@ Database models for LiteAds.
 
 from liteads.models.ad import (
     Advertiser,
+    AppClient,
     Campaign,
     Creative,
     HourlyStat,
@@ -21,6 +22,7 @@ __all__ = [
     "CreativeType",
     # Models
     "Advertiser",
+    "AppClient",
     "Campaign",
     "Creative",
     "TargetingRule",

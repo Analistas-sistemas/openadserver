@@ -270,6 +270,58 @@ class TargetingRetrieval(BaseRetrieval):
                     return False
             return True
 
+        # ⭐ NUEVOS TARGETING RULES PARA NETTALCO ⭐
+        
+        elif rule_type == "app_id":
+            """Targeting por app_id/sistema específico"""
+            app_ids = rule_value.get("values", [])
+            if app_ids and user_context.app_id:
+                if user_context.app_id not in app_ids:
+                    return False
+            return True
+        
+        elif rule_type == "slot":
+            """Targeting por slot_id (ubicación en la interfaz)"""
+            slots = rule_value.get("values", [])
+            if slots and user_context.slot_id:
+                if user_context.slot_id not in slots:
+                    return False
+            return True
+        
+        elif rule_type == "user_role":
+            """Targeting por roles de usuario (empleados internos)"""
+            target_roles = rule_value.get("roles", [])
+            user_roles = user_context.custom_features.get("roles", [])
+            
+            if target_roles and user_roles:
+                # Match si el usuario tiene alguno de los roles objetivo
+                return any(role in user_roles for role in target_roles)
+            return True
+        
+        elif rule_type == "department":
+            """Targeting por unidad funcional/departamento"""
+            target_departments = [d.upper() for d in rule_value.get("departments", [])]
+            user_department = user_context.custom_features.get("unidad_funcional", "").upper()
+            
+            if target_departments and user_department:
+                return user_department in target_departments
+            return True
+        
+        elif rule_type == "permission_level":
+            """Targeting por nivel de permisos"""
+            min_level = rule_value.get("min_level", 0)
+            max_level = rule_value.get("max_level", 9999)
+            user_level = user_context.custom_features.get("nivel_mas_alto", 0)
+            
+            return min_level <= user_level <= max_level
+        
+        elif rule_type == "is_admin":
+            """Targeting solo para administradores"""
+            require_admin = rule_value.get("value", False)
+            is_admin = user_context.custom_features.get("es_admin", False)
+            
+            return is_admin if require_admin else True
+
         # Unknown rule type - default match
         return True
 

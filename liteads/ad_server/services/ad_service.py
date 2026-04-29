@@ -88,6 +88,7 @@ class AdService:
         ctx = UserContext(
             user_id=request.user_id,
             user_hash=hash_user_id(request.user_id) if request.user_id else 0,
+            slot_id=request.slot_id,  # ⭐ NUEVO: pasar slot_id desde request
         )
 
         # Device info
@@ -112,6 +113,10 @@ class AdService:
             ctx.app_name = request.context.app_name or ""
             ctx.network = request.context.network or ""
             ctx.carrier = request.context.carrier or ""
+        
+        # Actualizar slot_id desde contexto si no se pasó en el constructor
+        if not ctx.slot_id:
+            ctx.slot_id = request.slot_id
 
         # User features
         if request.user_features:

@@ -65,6 +65,7 @@ class UserContext:
     # Context
     app_id: str = ""
     app_name: str = ""
+    slot_id: str = ""  # ⭐ NUEVO: identificador del slot/ubicación del anuncio
     network: str = ""
     carrier: str = ""
 

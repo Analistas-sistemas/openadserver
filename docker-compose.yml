@@ -38,7 +38,7 @@ services:
       POSTGRES_PASSWORD: liteads_password
       POSTGRES_DB: liteads
     volumes:
-      - postgres_data_v6:/var/lib/postgresql/data  # <--- AÑADE EL "_v2" AQUÍ
+      - postgres_data_v7:/var/lib/postgresql/data  # <--- AÑADE EL "_v2" AQUÍ
       - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U liteads -d liteads"]
@@ -65,7 +65,7 @@ services:
 
 # Declaración obligatoria de volúmenes y red externa de Dokploy
 volumes:
-  postgres_data_v6:
+  postgres_data_v7:
   redis_data:
 
 networks:
